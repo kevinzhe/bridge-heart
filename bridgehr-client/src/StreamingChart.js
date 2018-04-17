@@ -27,6 +27,17 @@ class StreamingChart extends Component {
     this.setState({width: chartWidth});
   }
 
+  yrange(range) {
+    const max = 5;
+    const min = 0.1;
+    const curRange = Math.max(Math.abs(range.min), Math.abs(range.max));
+    const newRange = Math.max(min, Math.min(max, curRange));
+    return {
+      min: -newRange,
+      max: +newRange
+    };
+  }
+
   render() {
     return (
       <SmoothieComponent
@@ -47,6 +58,7 @@ class StreamingChart extends Component {
         }}
         millisPerPixel={5}
         interpolation={'linear'}
+        yRangeFunction={this.yrange}
       />
     );
   }
