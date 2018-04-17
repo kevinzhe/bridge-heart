@@ -1,12 +1,14 @@
 import React, { Component } from 'react';
-import { Button } from 'react-bootstrap';
 import WebRTCWebcam from './WebRTCWebcam';
 
 class CanvasCamera extends Component {
 
   static defaultProps = {
+    debug: false,
     onNewFrame: (canvas) => { },
-    frameRate: 30
+    frameRate: 30,
+    camTorch: false,
+    camBack: true
   };
 
   static FRAME_WIDTH = 100;
@@ -14,19 +16,17 @@ class CanvasCamera extends Component {
 
   constructor(props) {
     super(props);
+    this.cam = React.createRef();
+    this.canvas = document.createElement('canvas');
+    this.canvas.setAttribute('width', CanvasCamera.FRAME_WIDTH);
+    this.canvas.setAttribute('height', CanvasCamera.FRAME_HEIGHT);
     this.state = {
-      cameraSide: 'environment',
       torchAvailable: false,
-      torch: false,
-      debug: false
     };
   }
 
   componentDidMount() {
     this.startService()
-  }
-
-  componentDidUpdate(nextProps) {
   }
 
   componentWillUnmount() {
@@ -50,19 +50,8 @@ class CanvasCamera extends Component {
 
   processFrame = () => {
     const ctx = this.canvas.getContext('2d');
-    this.cam.drawOnCanvas(ctx, 0, 0, this.canvas.width, this.canvas.height);
+    this.cam.current.drawOnCanvas(ctx, 0, 0, this.canvas.width, this.canvas.height);
     setTimeout(this.props.onNewFrame(this.canvas));
-  }
-
-  flipCamera = () => {
-    const newSide = this.state.cameraSide === 'user' ? 'environment' : 'user';
-    this.setState({
-      cameraSide: newSide
-    });
-  }
-
-  toggleTorch = () => {
-    this.setState({ torch: !this.state.torch });
   }
 
   onCapabilities = (capabilities) => {
@@ -75,32 +64,13 @@ class CanvasCamera extends Component {
 
   render() {
     const debugInfo = {
-      state: this.state
+      state: this.state,
+      props: this.props
     };
 
     return (
       <div>
-        <div className='row'>
-          <div className='col-xs-12 col-md-6'>
-            <Button onClick={this.flipCamera} block bsSize='large'>Flip</Button>
-          </div>
-          <div className='col-xs-12 col-md-6'>
-            <Button onClick={this.toggleTorch} block bsSize='large' disabled={!this.state.torchAvailable}>Flash</Button>
-          </div>
-        </div>
-
-        <div className='row'>
-          <div className='col-xs-12'>
-            <canvas
-              ref={(canvas) => this.canvas = canvas}
-              width={CanvasCamera.FRAME_WIDTH}
-              height={CanvasCamera.FRAME_HEIGHT}
-              style={{width: '100%', height: '50px'}}
-            />
-          </div>
-        </div>
-
-        <div className='row' hidden={!this.state.debug}>
+        <div className='row' hidden={!this.props.debug}>
           <div className='col-xs-12'>
             <pre>
               {JSON.stringify(debugInfo, null, 2)}
@@ -111,11 +81,11 @@ class CanvasCamera extends Component {
         <WebRTCWebcam
           video={true}
           audio={false}
-          videoSource={this.state.cameraSide}
-          torch={this.state.torch}
+          videoSource={this.props.camBack ? 'environment' : 'user'}
+          torch={this.props.camTorch}
           onCapabilities={this.onCapabilities}
           style={{display: 'none'}}
-          ref={(cam) => this.cam = cam}
+          ref={this.cam}
         />
       </div>
     );

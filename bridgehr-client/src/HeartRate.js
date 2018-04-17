@@ -1,13 +1,15 @@
 import React, { Component } from 'react';
-import SmoothieComponent from 'react-smoothie';
 import { IirFilter, CalcCascades, Fft } from 'fili';
 import CanvasCamera from './CanvasCamera';
-import { rgbToHsv } from './util';
 
 class HeartRate extends Component {
 
   static defaultProps = {
-    onBeat: (time) => { }
+    debug: false,
+    onBeat: (time) => { },
+    onData: (measurement) => { },
+    camTorch: false,
+    camBack: true
   }
 
   static FRAMERATE = 30;
@@ -18,17 +20,10 @@ class HeartRate extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      debug: false,
-      chartWidth: 200,
       rgb: {
         r: 0,
         g: 0,
         b: 0
-      },
-      hsv: {
-        h: 0,
-        s: 0,
-        v: 0
       },
       hr: 0
     };
@@ -47,62 +42,41 @@ class HeartRate extends Component {
     this.history = new Array(HeartRate.HISTORY_SAMPLES).fill(0);
   }
 
-  componentDidMount() {
-    this.setChartWidth();
-    this.signal0 = this.refs.chart.addTimeSeries({}, {
-      strokeStyle: 'rgba(0, 0, 0, 1)',
-      lineWidth: 2,
-      delay: 0.333333
-    });
-    this.signal1 = this.refs.chart.addTimeSeries({}, {
-      strokeStyle: 'rgba(0, 255, 0, 1)',
-      lineWidth: 2,
-    });
-  }
-
-  componentDidUpdate(nextProps) {
-  }
-
-  componentWillUnmount() {
-  }
-
-  setChartWidth = () => {
-    var chartWidth = this.refs.chartParent.clientWidth;
-    const cs = getComputedStyle(this.refs.chartParent);
-    chartWidth -= parseFloat(cs.paddingLeft);
-    chartWidth -= parseFloat(cs.paddingRight);
-    chartWidth -= parseFloat(cs.borderLeftWidth);
-    chartWidth -= parseFloat(cs.borderRightWidth);
-    this.setState({chartWidth: chartWidth});
-  }
-
   onFrame = (canvas) => {
+    // collect a measurement
     const now = Date.now();
-    const rgb = this.getFrameAverage(canvas);
-    const _hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
-
-    const hsv = {
-      h: _hsv[0]*255,
-      s: _hsv[1]*255,
-      v: _hsv[2]*255
-    };
-
-    this.setState({
-      rgb: rgb,
-      hsv: hsv
-    });
-
+    const frame = this.getFrame(canvas);
+    const rgb = this.getFrameAverage(frame);
     const measurement = this.bandpassFilter.singleStep(rgb.r);
-    this.signal0.append(now, measurement);
 
+    // save it and find the max frequency (heart rate)
     this.history.shift();
     this.history.push(measurement);
+    const maxFreq = this.getMaxFreq(this.history);
 
+    // do the callback
+    setTimeout(() => {
+      this.props.onData({
+        time: now,
+        value: measurement,
+        hr: maxFreq,
+        frame: frame
+      });
+    }, 0);
+
+    // update the state
+    this.setState({
+      hr: maxFreq,
+      rgb: rgb
+    });
+  }
+
+  getMaxFreq = (history) => {
     const fftIn = HeartRate.HISTORY_FILLER
-                      .concat(this.history)
+                      .concat(history)
                       .concat(HeartRate.HISTORY_FILLER);
 
-    const freqMag = this.fft.magnitude(this.fft.forward(fftIn, 'hanning'));
+    const freqMag = this.fft.magnitude(this.fft.forward(fftIn, 'none'));
 
     var maxFreq = 0;
     var maxMag = 0;
@@ -113,16 +87,20 @@ class HeartRate extends Component {
       }
     }
 
-    this.setState({ hr: maxFreq });
+    return maxFreq;
   }
 
-  getFrameAverage = (canvas) => {
-    const w = canvas.width;
-    const h = canvas.height;
+  getFrame = (canvas) => {
+    return canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+  }
+
+  getFrameAverage = (frame) => {
+    const w = frame.width;
+    const h = frame.height;
 
     const x0 = 0;
-    const x1 = w;
     const y0 = 0;
+    const x1 = w;
     const y1 = h;
 
     var result = {
@@ -130,8 +108,6 @@ class HeartRate extends Component {
       g: 0,
       b: 0
     };
-
-    const frame = canvas.getContext('2d').getImageData(0, 0, w, h);
 
     var total = 0;
     for (var i = y0; i < y1; i++) {
@@ -159,33 +135,10 @@ class HeartRate extends Component {
         <CanvasCamera
           onNewFrame={this.onFrame}
           frameRate={HeartRate.FRAMERATE}
+          camTorch={this.props.camTorch}
+          camBack={this.props.camBack}
         />
-        <div className='row'>
-          <div className='col-xs-12' ref='chartParent'>
-            <SmoothieComponent
-              ref={'chart'}
-              width={this.state.chartWidth}
-              height={75}
-              grid={{
-                strokeStyle: '#00000000',
-                fillStyle: '#00000000',
-                verticalSections: 0,
-                borderVisible: false,
-                labels: {
-                  disabled: true
-                }
-              }}
-              millisPerPixel={5}
-              interpolation={'linear'}
-            />
-          </div>
-        </div>
-        <div className='row'>
-          <div className='col-xs-12'>
-            <span style={{fontSize: 72}}>{Math.round(this.state.hr)}</span>
-          </div>
-        </div>
-        <pre hidden={!this.state.debug}>
+        <pre hidden={!this.props.debug}>
           {JSON.stringify(this.state, null, 2)}
         </pre>
       </div>
