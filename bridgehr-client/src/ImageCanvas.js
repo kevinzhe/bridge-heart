@@ -3,7 +3,9 @@ import React, { Component } from 'react';
 class ImageCanvas extends Component {
 
   static defaultProps = {
-    frame: null
+    frame: null,
+    width: 30,
+    height: 30
   };
 
   constructor(props) {
@@ -23,6 +25,8 @@ class ImageCanvas extends Component {
     return (
       <canvas
         ref={this.canvas}
+        width={this.props.width}
+        height={this.props.height}
       />
     );
   }

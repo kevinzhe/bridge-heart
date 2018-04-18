@@ -59,7 +59,8 @@ class HeartRate extends Component {
         time: now,
         value: measurement,
         hr: hrData.hr,
-        frame: frame
+        frame: frame,
+        rgb: rgb
       });
     }, 0);
 

@@ -1,8 +1,7 @@
 import React, { Component } from 'react';
-import { Button } from 'react-bootstrap';
+import { Button, Container, Grid, Icon, Statistic, Transition } from 'semantic-ui-react';
 import HeartRate from './HeartRate';
 import StreamingChart from './StreamingChart';
-import ImageCanvas from './ImageCanvas';
 import './HRClient.css';
 
 class HRClient extends Component {
@@ -11,12 +10,18 @@ class HRClient extends Component {
     super(props);
     this.chart = React.createRef();
     this.state = {
+      active: true,
       beatCount: 0,
       measurement: {
         time: 0,
         hr: 0,
         value: 0,
-        frame: null
+        frame: null,
+        rgb: {
+          r: 0,
+          g: 0,
+          b: 0
+        }
       },
       camera: {
         torch: false,
@@ -26,7 +31,7 @@ class HRClient extends Component {
   }
 
   componentWillMount() {
-    document.title = 'My <3 is on the bridge';
+    document.title = 'My <3 is in the bridge';
   }
 
   componentDidMount() {
@@ -45,62 +50,87 @@ class HRClient extends Component {
     this.setState({ measurement: measurement });
   }
 
+  getCurRGB = () => {
+    const r = Math.min(255, Math.round(this.state.measurement.rgb.r));
+    const g = Math.min(255, Math.round(this.state.measurement.rgb.g));
+    const b = Math.min(255, Math.round(this.state.measurement.rgb.b));
+    return 'rgb('+r+','+g+','+b+')';
+  }
+
   render() {
     return (
-      <div className='container'>
+      <div>
+        <Container>
+          <Grid centered columns={1}>
 
-        <div className='row'>
-          <div className='col-md-6'>
-            <Button
-              onClick={() => this.setState({camera: {torch: !this.state.camera.torch}})}
-              block
-              bsSize='large'
-              disabled={false}>
-              Flash
-            </Button>
-          </div>
-          <div className='col-md-6'>
-            <Button
-              onClick={() => this.setState({camera: {back: !this.state.camera.back}})}
-              block
-              bsSize='large'
-              disabled={false}>
-              Flip
-            </Button>
-          </div>
-        </div>
+            <Grid.Row>
+              <Grid.Column>
+                <StreamingChart ref={this.chart} active={this.state.active} />
+              </Grid.Column>
+            </Grid.Row>
 
-        <div className='row'>
-          <div className='col-xs-12'>
-            <StreamingChart ref={this.chart} />
-          </div>
-        </div>
+            <Grid.Row>
+              <Grid.Column textAlign='center'>
+                <Statistic>
+                  <Statistic.Value>
+                    {Math.round(this.state.measurement.hr)}
+                  </Statistic.Value>
+                  <Statistic.Label>
+                    BPM
+                  </Statistic.Label>
+                </Statistic>
+              </Grid.Column>
+            </Grid.Row>
 
-        <div className='row'>
-          <div className='col-xs-12'>
-            <ImageCanvas
-              ref={'canvas'}
-              frame={this.state.measurement.frame}
-            />
-          </div>
-        </div>
+            <Grid.Row>
+              <Grid.Column textAlign='center'>
+                <Transition animation='pulse' duration={250} visible={this.state.beatCount % 2 === 0}>
+                  <Icon.Group size='massive'>
+                    <Icon name='heart' style={{color: this.getCurRGB()}} />
+                  </Icon.Group>
+                </Transition>
+              </Grid.Column>
+            </Grid.Row>
 
-        <div className='row'>
-          <div className='col-xs-6'>
-            <span style={{fontSize: 72}}>{Math.round(this.state.measurement.hr)}</span>
-          </div>
-          <div className='col-xs-6'>
-            <span style={{fontSize: 72}}>{Math.round(this.state.beatCount)}</span>
-          </div>
-        </div>
+            <Grid.Row>
+              <Grid.Column textAlign='center'>
+                <Button
+                  onClick={() => this.setState({camera: {torch: !this.state.camera.torch}})}
+                  basic
+                  circular
+                  toggle
+                  active={this.state.camera.torch}
+                  icon
+                  size={'massive'}
+                  disabled={!this.state.active}
+                >
+                  <Icon name='lightbulb' />
+                </Button>
 
+                <Button
+                  onClick={() => this.setState({active: !this.state.active})}
+                  basic
+                  circular
+                  toggle
+                  active={this.state.active}
+                  icon
+                  size={'massive'}
+                >
+                  <Icon name={this.state.active ? 'pause' : 'play'} />
+                </Button>
+              </Grid.Column>
+            </Grid.Row>
+
+          </Grid>
+        </Container>
+
+        { this.state.active &&
         <HeartRate
           onBeat={this.onBeat}
           onData={this.onData}
           camTorch={this.state.camera.torch}
           camBack={this.state.camera.back}
-        />
-
+        /> }
       </div>
     );
   }

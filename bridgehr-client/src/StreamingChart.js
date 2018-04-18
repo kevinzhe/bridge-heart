@@ -4,16 +4,32 @@ import SmoothieComponent from 'react-smoothie';
 
 class StreamingChart extends Component {
 
+  static defaultProps = {
+    active: true
+  };
+
   constructor(props) {
     super(props);
     this.chart = React.createRef();
+    this.tss = [];
     this.state = {
       width: 400
     };
   }
 
   addTimeSeries(params) {
-    return this.chart.current.addTimeSeries({}, params);
+    const ts = this.chart.current.addTimeSeries({}, params);
+    this.tss.push(ts);
+    return ts;
+  }
+
+  UNSAFE_componentWillUpdate(nextProps) {
+    if (nextProps.active && !this.props.active) {
+      this.tss.forEach((ts) => ts.data = []);
+      this.chart.current.smoothie.start();
+    } else if (!nextProps.active && this.props.active) {
+      this.chart.current.smoothie.stop();
+    }
   }
 
   componentDidMount() {
@@ -54,7 +70,7 @@ class StreamingChart extends Component {
           }
         }}
         labels={{
-          fillStyle: '#000000ff'
+          fillStyle: '#00000000'
         }}
         millisPerPixel={5}
         interpolation={'linear'}
