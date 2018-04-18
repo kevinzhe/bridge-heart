@@ -11,10 +11,12 @@ class HRClient extends Component {
     super(props);
     this.chart = React.createRef();
     this.state = {
+      beatCount: 0,
       measurement: {
         time: 0,
         hr: 0,
-        value: 0
+        value: 0,
+        frame: null
       },
       camera: {
         torch: false,
@@ -29,12 +31,13 @@ class HRClient extends Component {
 
   componentDidMount() {
     this.signal0 = this.chart.current.addTimeSeries({
-      strokeStyle: 'rgba(0, 255, 0, 1)',
+      strokeStyle: 'rgba(0, 0, 0, 1)',
       lineWidth: 2,
     });
   }
 
   onBeat = (time) => {
+    this.setState({ beatCount: this.state.beatCount + 1 });
   }
   
   onData = (measurement) => {
@@ -83,8 +86,11 @@ class HRClient extends Component {
         </div>
 
         <div className='row'>
-          <div className='col-xs-12'>
+          <div className='col-xs-6'>
             <span style={{fontSize: 72}}>{Math.round(this.state.measurement.hr)}</span>
+          </div>
+          <div className='col-xs-6'>
+            <span style={{fontSize: 72}}>{Math.round(this.state.beatCount)}</span>
           </div>
         </div>
 

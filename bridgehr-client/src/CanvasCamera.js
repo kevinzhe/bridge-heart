@@ -11,8 +11,8 @@ class CanvasCamera extends Component {
     camBack: true
   };
 
-  static FRAME_WIDTH = 100;
-  static FRAME_HEIGHT = 100;
+  static FRAME_WIDTH = 30;
+  static FRAME_HEIGHT = 30;
 
   constructor(props) {
     super(props);

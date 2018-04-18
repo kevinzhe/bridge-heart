@@ -25,7 +25,6 @@ class HeartRate extends Component {
         g: 0,
         b: 0
       },
-      hr: 0
     };
 
     this.bandpassFilter = new IirFilter(
@@ -52,42 +51,63 @@ class HeartRate extends Component {
     // save it and find the max frequency (heart rate)
     this.history.shift();
     this.history.push(measurement);
-    const maxFreq = this.getMaxFreq(this.history);
+    const hrData = this.getHRData(this.history);
 
     // do the callback
     setTimeout(() => {
       this.props.onData({
         time: now,
         value: measurement,
-        hr: maxFreq,
+        hr: hrData.hr,
         frame: frame
       });
     }, 0);
 
+    // determine if is beat
+    if (this.isBeat(this.history, hrData.hr)) {
+      setTimeout(() => {
+        this.props.onBeat(now);
+      }, 0);
+    }
+
     // update the state
     this.setState({
-      hr: maxFreq,
       rgb: rgb
     });
   }
 
-  getMaxFreq = (history) => {
+  isBeat = (history, hr) => {
+    const _history = history.slice(history.length-HeartRate.FRAMERATE*4);
+    const last = _history[_history.length-2];
+    const cur = _history[_history.length-1];
+    const hi = Math.max(..._history);
+    const lo = Math.min(..._history);
+    const thresh = 0.7 * (hi - lo) + lo;
+    return cur > thresh && last <= thresh;
+  }
+
+  getHRData = (history) => {
     const fftIn = HeartRate.HISTORY_FILLER
                       .concat(history)
                       .concat(HeartRate.HISTORY_FILLER);
 
-    const freqMag = this.fft.magnitude(this.fft.forward(fftIn, 'none'));
+    const fftResult = this.fft.forward(fftIn, 'none');
+    const freqMag = this.fft.magnitude(fftResult);
 
-    var maxFreq = 0;
+    var maxIdx = 0;
     var maxMag = 0;
     for (var i = 0; i < freqMag.length/2; i++) {
       if (freqMag[i] > maxMag) {
         maxMag = freqMag[i];
-        maxFreq = i * HeartRate.FRAMERATE * 60 / HeartRate.FFT_RADIX;
+        maxIdx = i;
       }
     }
 
-    return maxFreq;
+    const maxFreq = maxIdx * HeartRate.FRAMERATE * 60 / HeartRate.FFT_RADIX;
+
+    return {
+      hr: maxFreq,
+    };
   }
 
   getFrame = (canvas) => {
