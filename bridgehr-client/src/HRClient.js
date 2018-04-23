@@ -30,11 +30,8 @@ class HRClient extends Component {
     };
   }
 
-  componentWillMount() {
-    document.title = 'My <3 is in the bridge';
-  }
-
   componentDidMount() {
+    document.title = 'My <3 is in the bridge';
     this.signal0 = this.chart.current.addTimeSeries({
       strokeStyle: 'rgba(0, 0, 0, 1)',
       lineWidth: 2,
