@@ -2,6 +2,8 @@
 Generic interface to program the bridge.
 '''
 
+import sys
+
 
 class Bridge(object):
   '''Generic interface for the bridge.'''
@@ -21,10 +23,12 @@ class PauschBridge(Bridge):
 
   def __init__(self):
     '''Initialize the Pausch Bridge.'''
-    import lumiversepython as L
+    try: import lumiversepython as L
+    except: raise ImportError(
+      'Couldn\'t import lumiversepython: ' +
+      'Are you running on pbridge.adm.cs.cmu.edu?')
     self.rig = L.Rig("/home/teacher/Lumiverse/PBridge.rig.json")
     self.rig.init()
-    #self.rig.run()
     # Cache the panel objects into an array for speedy lookup.
     # Gates side has sequence 1.
     self.top_panels = [
