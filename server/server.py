@@ -29,7 +29,7 @@ def run_server(evq):
   event_queue = evq
   app = socketio.Middleware(sio)
   server = eventlet.wrap_ssl(
-    eventlet.listen(('bridge.kevinzheng.com', 8000)),
+    eventlet.listen(('api.bridge.kevinzheng.com', 43414)),
     certfile='./certs/fullchain.pem',
     keyfile='./certs/privkey.pem',
     server_side=True)

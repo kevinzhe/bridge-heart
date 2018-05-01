@@ -7,9 +7,10 @@ class Bridge(object):
   '''Generic interface for the bridge.'''
   START_SEQ = 1
   END_SEQ = 200
-  def set_top(self, r, g, b):
+
+  def set_top(self, r, g, b, w, panels=None):
     raise NotImplementedError()
-  def set_bottom(self, r, g, b):
+  def set_bottom(self, r, g, b, w, panels=None):
     raise NotImplementedError()
   def render(self):
     raise NotImplementedError()
@@ -35,11 +36,19 @@ class PauschBridge(Bridge):
     [panel.setRGBRaw(0, 0, 0) for panel in self.top_panels]
     [panel.setRGBRaw(0, 0, 0) for panel in self.bottom_panels]
 
-  def set_top(self, r, g, b):
-    [panel.setRGBRaw(r, g, b) for panel in self.top_panels]
+  def set_top(self, r, g, b, w, panels = None):
+    if panels is None:
+      [panel.setRGBRaw(r, g, b, w) for panel in self.top_panels]
+    else:
+      for panel in panels:
+        self.top_panels[panel].setRGBRaw(r, g, b, w)
 
-  def set_bottom(self, r, g, b):
-    [panel.setRGBRaw(r, g, b) for panel in self.bottom_panels]
+  def set_bottom(self, r, g, b, w, panels = None):
+    if panels is None:
+      [panel.setRGBRaw(r, g, b, w) for panel in self.bottom_panels]
+    else:
+      for panel in panels:
+        self.bottom_panels[panel].setRGBRaw(r, g, b, w)
 
   def render(self):
     self.rig.updateOnce()
@@ -52,10 +61,10 @@ class SimulatedBridge(Bridge):
     self.top = (0, 0, 0)
     self.bottom = (0, 0, 0)
 
-  def set_top(self, r, g, b):
+  def set_top(self, r, g, b, w, panels=None):
     self.top = (r, g, b)
 
-  def set_bottom(self, r, g, b):
+  def set_bottom(self, r, g, b, w, panels=None):
     self.bottom = (r, g, b)
 
   def render(self):
@@ -68,13 +77,13 @@ class CombinedBridge(Bridge):
   def __init__(self, bridges):
     self.bridges = bridges
 
-  def set_top(self, r, g, b):
+  def set_top(self, r, g, b, w, panels=None):
     for bridge in self.bridges:
-      bridge.set_top(r, g, b)
+      bridge.set_top(r, g, b, w, panels=panels)
 
-  def set_bottom(self, r, g, b):
+  def set_bottom(self, r, g, b, w, panels=None):
     for bridge in self.bridges:
-      bridge.set_bottom(r, g, b)
+      bridge.set_bottom(r, g, b, w, panels=panels)
 
   def render(self):
     for bridge in self.bridges:
