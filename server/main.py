@@ -1,6 +1,7 @@
 import time
 
 from argparse import ArgumentParser
+from argparse import ArgumentDefaultsHelpFormatter
 
 import eventloop
 import events
@@ -67,8 +68,13 @@ def draw_state(state, bridge):
     bridge.set_top(*state.colors[cid], w=diff, panels=state.panels_in_use[cid])
 
 def get_args():
-  parser = ArgumentParser(description='Run the bridge heart monitor server')
-  parser.add_argument('--pausch', '-p', action='store_true', dest='pausch', help='Run on the Pausch bridge')
+  parser = ArgumentParser(description='Run the bridge heart monitor server', formatter_class=ArgumentDefaultsHelpFormatter)
+  parser.add_argument('--no-pausch', action='store_false', dest='pausch', help='Don\'t run on the Pausch bridge')
+  parser.add_argument('--host', action='store', type=str, default='api.bridge.kevinzheng.com', dest='listen_host', help='Host to listen on')
+  parser.add_argument('--port', action='store', type=int, default=43414, dest='listen_port', help='Port to listen on')
+  parser.add_argument('--no-https', action='store_false', dest='listen_https', help='Don\'t use HTTPS')
+  parser.add_argument('--priv-key', action='store', type=str, default='./certs/privkey.pem', dest='listen_privkey', help='Path to private key')
+  parser.add_argument('--pub-key', action='store', type=str, default='./certs/fullchain.pem', dest='listen_pubkey', help='Path to public key')
   return parser.parse_args()
 
 def main():
@@ -91,7 +97,12 @@ def main():
   eventloop.register_draw(draw_state)
 
   # spin up the event loop
-  eventloop.start(bridge, state)
+  eventloop.start(bridge, state,
+    listen_host=args.listen_host,
+    listen_port=args.listen_port,
+    listen_https=args.listen_https,
+    listen_privkey=args.listen_privkey,
+    listen_pubkey=args.listen_pubkey)
 
 if __name__ == '__main__':
   main()

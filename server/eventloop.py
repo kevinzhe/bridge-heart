@@ -38,7 +38,8 @@ def register_draw(draw_state_fn):
   global _draw_state
   _draw_state = draw_state_fn
 
-def start(bridge, state):
+def start(bridge, state, listen_host='', listen_port=8000,
+    listen_https=False, listen_privkey='', listen_pubkey=''):
   # initialize the event queue
   evq = Queue()
 
@@ -50,7 +51,9 @@ def start(bridge, state):
   timer_thread.start()
 
   # start the socket server
-  web_process = Process(target=run_server, args=(evq,))
+  web_process = Process(target=run_server,
+    args=(evq, listen_host, listen_port,
+      listen_https, listen_privkey, listen_pubkey))
   web_process.start()
 
   # run indefinitely

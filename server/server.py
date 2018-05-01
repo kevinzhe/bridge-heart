@@ -24,15 +24,19 @@ def disconnect(sid):
     event = events.Disconnected(sid)
     event_queue.put(event)
 
-def run_server(evq):
+def run_server(evq, listen_host='', listen_port=8000,
+    https=False, listen_privkey='', listen_pubkey=''):
   global event_queue
   event_queue = evq
   app = socketio.Middleware(sio)
-  server = eventlet.wrap_ssl(
-    eventlet.listen(('api.bridge.kevinzheng.com', 43414)),
-    certfile='./certs/fullchain.pem',
-    keyfile='./certs/privkey.pem',
-    server_side=True)
+  if https:
+    server = eventlet.wrap_ssl(
+      eventlet.listen((listen_host, listen_port)),
+      certfile=listen_pubkey,
+      keyfile=listen_privkey,
+      server_side=True)
+  else:
+    server = eventlet.listen((listen_host, listen_port))
   eventlet.wsgi.server(server, app)
 
 def main():
