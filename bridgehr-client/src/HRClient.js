@@ -1,16 +1,20 @@
 import React, { Component } from 'react';
-import { Button, Container, Grid, Icon, Statistic, Transition } from 'semantic-ui-react';
+import { Button, Container, Grid, Icon, Loader, Statistic, Transition } from 'semantic-ui-react';
+import io from 'socket.io-client';
 import HeartRate from './HeartRate';
 import StreamingChart from './StreamingChart';
 import './HRClient.css';
 
 class HRClient extends Component {
 
+  static SERVER = 'https://api.bridge.kevinzheng.com:43414/';
+
   constructor(props) {
     super(props);
     this.chart = React.createRef();
     this.state = {
       active: true,
+      connected: false,
       beatCount: 0,
       measurement: {
         time: 0,
@@ -36,9 +40,27 @@ class HRClient extends Component {
       strokeStyle: 'rgba(0, 0, 0, 1)',
       lineWidth: 2,
     });
+    this.setUpSocket();
+  }
+
+  componentWillUnmount() {
+    this.tearDownSocket();
+  }
+
+  setUpSocket = () => {
+    this.socket = io(HRClient.SERVER);
+    this.socket.on('connect', () => { this.setState({connected: true}); });
+    this.socket.on('disconnect', () => { this.setState({connected: false}); });
+  }
+
+  tearDownSocket = () => {
+    this.socket.disconnect();
   }
 
   onBeat = (time) => {
+    if (this.state.connected) {
+      this.socket.emit('beat', time);
+    }
     this.setState({ beatCount: this.state.beatCount + 1 });
   }
   
@@ -59,7 +81,6 @@ class HRClient extends Component {
       <div>
         <Container>
           <Grid centered columns={1}>
-
             <Grid.Row>
               <Grid.Column>
                 <StreamingChart ref={this.chart} active={this.state.active} />
@@ -117,6 +138,16 @@ class HRClient extends Component {
                 </Button>
               </Grid.Column>
             </Grid.Row>
+
+            <Transition visible={!this.state.connected} animation='scale' duration={500}>
+              <Grid.Row>
+                <Grid.Column textAlign='center'>
+                  <Loader active={true} inline>
+                    Connecting
+                  </Loader>
+                </Grid.Column>
+              </Grid.Row>
+            </Transition>
 
           </Grid>
         </Container>
