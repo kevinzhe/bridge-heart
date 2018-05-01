@@ -1,14 +1,13 @@
 import time
-import traceback
-import random
-from threading import Thread, Event
-from multiprocessing import Process, Queue
 
+import eventloop
 import events
-from bridge import CombinedBridge, PauschBridge, SimulatedBridge
-from server import run_server
 
-UPDATE_HZ = 30
+from bridge import CombinedBridge
+from bridge import PauschBridge
+from bridge import SimulatedBridge
+
+
 START_SEQ_OFFSET = 40
 WIDTH = 1
 
@@ -27,6 +26,7 @@ class State(object):
   panels_in_use = {}
   colors = {}
   next_color = 0
+
 
 def on_connected(state, event):
   '''Handle a client connecting.'''
@@ -48,6 +48,7 @@ def on_disconnected(state, event):
 
 def on_heartbeat(state, event):
   '''Handle a HeartBeat event.'''
+  print('heartbeat')
   state.last_beat[event.cid] = time.time()
 
 def on_timer(state, event):
@@ -63,56 +64,26 @@ def draw_state(state, bridge):
     bridge.set_bottom(*state.colors[cid], w=diff, panels=state.panels_in_use[cid])
     bridge.set_top(*state.colors[cid], w=diff, panels=state.panels_in_use[cid])
 
-def main_loop(evq, state, bridge):
-  while True:
-    event = evq.get()
-    if type(event) == events.TimerTick:   on_timer(state, event)
-    elif type(event) == events.HeartBeat: on_heartbeat(state, event)
-    elif type(event) == events.Connected: on_connected(state, event)
-    elif type(event) == events.Disconnected: on_disconnected(state, event)
-    draw_state(state, bridge)
-    bridge.render()
-
-
-def timer(evq, stop):
-  '''Thread target that generates periodic timer ticks into the event queue'''
-  while not stop.wait(1.0/UPDATE_HZ):
-    evq.put(events.TimerTick())
-
 
 def main():
   # initialize the state object
   state = State()
 
   # initialize the bridges
-  bridges = []
-  bridges.append(SimulatedBridge())
-  bridges.append(PauschBridge())
+  bridge = CombinedBridge([
+    SimulatedBridge(),
+    #PauschBridge()
+  ])
 
-  # initialize the event queue
-  evq = Queue()
+  # register all of the handlers
+  eventloop.register_handler(events.TimerTick, on_timer)
+  eventloop.register_handler(events.HeartBeat, on_heartbeat)
+  eventloop.register_handler(events.Connected, on_connected)
+  eventloop.register_handler(events.Disconnected, on_disconnected)
+  eventloop.register_draw(draw_state)
 
-  # signal the producer threads to stop
-  stop_event = Event()
+  # spin up the event loop
+  eventloop.start(bridge, state)
 
-  # start the timer
-  timer_thread = Thread(target=timer, args=(evq, stop_event,))
-  timer_thread.start()
-
-  # start the socket server
-  web_process = Process(target=run_server, args=(evq,))
-  web_process.start()
-
-  # run indefinitely
-  try:
-    main_loop(evq, state, CombinedBridge(bridges))
-  except (Exception, KeyboardInterrupt) as e:
-    traceback.print_exc()
-    stop_event.set()
-    timer_thread.join()
-    web_process.join()
-    print('event loop interrupted, exiting')
-
-
-if __name__ == "__main__":
+if __name__ == '__main__':
   main()
