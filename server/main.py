@@ -1,5 +1,7 @@
 import time
 
+from argparse import ArgumentParser
+
 import eventloop
 import events
 
@@ -64,16 +66,22 @@ def draw_state(state, bridge):
     bridge.set_bottom(*state.colors[cid], w=diff, panels=state.panels_in_use[cid])
     bridge.set_top(*state.colors[cid], w=diff, panels=state.panels_in_use[cid])
 
+def get_args():
+  parser = ArgumentParser(description='Run the bridge heart monitor server')
+  parser.add_argument('--pausch', '-p', action='store_true', dest='pausch', help='Run on the Pausch bridge')
+  return parser.parse_args()
 
 def main():
+  args = get_args()
+
   # initialize the state object
   state = State()
 
   # initialize the bridges
-  bridge = CombinedBridge([
-    SimulatedBridge(),
-    #PauschBridge()
-  ])
+  bridges = []
+  bridges.append(SimulatedBridge())
+  if args.pausch: bridges.append(PauschBridge())
+  bridge = CombinedBridge(bridges)
 
   # register all of the handlers
   eventloop.register_handler(events.TimerTick, on_timer)
