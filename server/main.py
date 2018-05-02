@@ -6,13 +6,14 @@ from argparse import ArgumentDefaultsHelpFormatter
 import eventloop
 import events
 
+from bridge import Bridge
 from bridge import CombinedBridge
 from bridge import PauschBridge
 from bridge import SimulatedBridge
 
 
 START_SEQ_OFFSET = 40
-WIDTH = 1
+WIDTH = 28
 
 COLORS = (
 (249.0/255.0, 38.0/255.0,114.0/255.0),
@@ -22,37 +23,93 @@ COLORS = (
 (174.0/255.0,129.0/255.0,255.0/255.0),
 )
 
+class Client(object):
+
+  next_color = 0
+
+  def __init__(self, cid):
+    self.cid = cid
+    self.last_beat = 0
+    self.color = COLORS[Client.next_color]
+    Client.next_color += 1
+    Client.next_color %= len(COLORS)
+
+
 class State(object):
   '''All the state'''
-  now = 0
-  last_beat = {}
-  panels_in_use = {}
-  colors = {}
-  next_color = 0
+
+  def __init__(self):
+    self.now = 0
+    self.clients = [None for _ in range((Bridge.END_SEQ-Bridge.START_SEQ)/WIDTH)]
+    self.num_free_panels = (Bridge.END_SEQ-Bridge.START_SEQ)/WIDTH
+
+  def get_cid(self, cid):
+    for client in self.clients:
+      if client is not None and client.cid == cid:
+        return client
+    return False
+
+  def num_free(self):
+    return self.num_free_panels
+
+  def place_next(self, client):
+    if self.num_free_panels % 2 == 0:
+      for i in range(len(self.clients)):
+        if self.clients[i] is None:
+          self.clients[i] = client
+          self.num_free_panels-=1
+          return True
+    else:
+      for i in range(len(self.clients)):
+        if self.clients[len(self.clients)-i-1] is None:
+          self.clients[len(self.clients)-i-1] = client
+          self.num_free_panels-=1
+          return True
+    return False
+
+  def remove_client(self, client):
+    ''' Assumes that the client must be in our self.clients list '''
+    seen = None
+    for i in range(len(self.clients)):
+      if self.clients[i] == client:
+        self.clients[i] = None
+        seen = i
+    if seen is None:
+      return False
+    else:
+      if seen <= len(self.clients) / 2:
+        for i in range(seen+1, 1+len(self.clients)//2):
+          self.clients[i-1] = self.clients[i]
+          self.clients[i] = None
+      else:
+        for i in range(seen-1, len(self.clients)//2, -1):
+          self.clients[i+1] = self.clients[i]
+          self.clients[i] = None
+    self.num_free_panels+=1
+    return True
 
 
 def on_connected(state, event):
   '''Handle a client connecting.'''
   print('connected', event.cid)
-  next_panel = START_SEQ_OFFSET
-  while next_panel in [a for b in state.panels_in_use.values() for a in b]:
-    next_panel += 1
-  state.panels_in_use[event.cid] = range(next_panel, next_panel + WIDTH)
-  state.last_beat[event.cid] = 0
-  state.colors[event.cid] = COLORS[state.next_color]
-  state.next_color += 1
-  state.next_color %= len(COLORS)
+  cl = Client(event.cid)
+  if state.num_free() > 0:
+    state.place_next(cl)
+    print 'connect', state.num_free()
 
 def on_disconnected(state, event):
   '''Handle a client disconnecting.'''
   print('disconnected', event.cid)
-  del state.last_beat[event.cid]
-  del state.panels_in_use[event.cid]
+  client = state.get_cid(event.cid)
+  if client is not None:
+    state.remove_client(client)
+    print 'disconnect', state.num_free()
 
 def on_heartbeat(state, event):
   '''Handle a HeartBeat event.'''
-  print('heartbeat')
-  state.last_beat[event.cid] = time.time()
+  client = state.get_cid(event.cid)
+  if client is not None:
+    client.last_beat = time.time()
 
 def on_timer(state, event):
   '''Handle a TimerTick event.'''
@@ -60,12 +117,19 @@ def on_timer(state, event):
 
 def draw_state(state, bridge):
   '''Translate the supplied state object into a lighting show on the bridge.'''
-  for cid in state.last_beat.keys():
-    diff = state.now - state.last_beat[cid]
-    diff = min(diff, 1.0)
-    diff = 1.0 - diff
-    bridge.set_bottom(*state.colors[cid], w=diff, panels=state.panels_in_use[cid])
-    bridge.set_top(*state.colors[cid], w=diff, panels=state.panels_in_use[cid])
+  for client_idx, client in enumerate(state.clients):
+    if client is None:
+      color = (0, 0, 0)
+      w = 0.0
+    else:
+      diff = state.now - client.last_beat
+      diff = min(diff, 0.6)
+      diff = 1.0 - diff
+      color = client.color
+      w = diff
+    panels = range(client_idx*WIDTH, client_idx*WIDTH+WIDTH)
+    bridge.set_top(*color, w=w, panels=panels)
+    bridge.set_bottom(*color, w=w, panels=panels)
 
 def get_args():
   parser = ArgumentParser(description='Run the bridge heart monitor server', formatter_class=ArgumentDefaultsHelpFormatter)
