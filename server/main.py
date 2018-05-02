@@ -16,11 +16,11 @@ START_SEQ_OFFSET = 40
 WIDTH = 28
 
 COLORS = (
-(249.0/255.0, 38.0/255.0,114.0/255.0),
-(166.0/255.0,226.0/255.0, 46.0/255.0),
-(102.0/255.0,217.0/255.0,239.0/255.0),
-(253.0/255.0,151.0/255.0, 31.0/255.0),
-(174.0/255.0,129.0/255.0,255.0/255.0),
+( 77.0/255.0, 157.0/255.0, 224.0/255.0),
+(225.0/255.0,  85.0/255.0,  84.0/255.0),
+(225.0/255.0, 188.0/255.0,  41.0/255.0),
+( 59.0/255.0, 178.0/255.0, 115.0/255.0),
+(119.0/255.0, 104.0/255.0, 174.0/255.0),
 )
 
 class Client(object):
@@ -40,6 +40,7 @@ class State(object):
 
   def __init__(self):
     self.now = 0
+    self.now_last = 0
     self.clients = [None for _ in range((Bridge.END_SEQ-Bridge.START_SEQ)/WIDTH)]
     self.num_free_panels = (Bridge.END_SEQ-Bridge.START_SEQ)/WIDTH
 
@@ -108,11 +109,12 @@ def on_disconnected(state, event):
 def on_heartbeat(state, event):
   '''Handle a HeartBeat event.'''
   client = state.get_cid(event.cid)
-  if client is not None:
+  if client:
     client.last_beat = time.time()
 
 def on_timer(state, event):
   '''Handle a TimerTick event.'''
+  state.now_last = state.now
   state.now = time.time()
 
 def draw_state(state, bridge):
@@ -123,10 +125,12 @@ def draw_state(state, bridge):
       w = 0.0
     else:
       diff = state.now - client.last_beat
-      diff = min(diff, 0.6)
+      diff = min(diff, 0.4)
       diff = 1.0 - diff
       color = client.color
       w = diff
+    if state.num_free() == 0:
+      w = 1.0 - min(state.now % 1.0, 0.4)
     panels = range(client_idx*WIDTH, client_idx*WIDTH+WIDTH)
     bridge.set_top(*color, w=w, panels=panels)
     bridge.set_bottom(*color, w=w, panels=panels)
