@@ -146,11 +146,17 @@ def on_timer(state):
 def broadcast_state(state):
   data = [client.color if client is not None else None for client in state.clients]
   eventloop.broadcast('colors', data)
+  send_indicies(state);
 
 def broadcast_beat(state, beat_cid):
   idx = state.get_cid_index(beat_cid)
   if idx != -1:
     eventloop.broadcast('beat', idx)
+
+def send_indicies(state):
+  for i, client in enumerate(state.clients):
+    if client is not None:
+      eventloop.emit(client.cid, 'self_index', i)
 
 ################################################################################
 # State visualization

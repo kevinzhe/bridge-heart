@@ -21,6 +21,9 @@ def render_forever(state, bridge, draw_fn, timer_fn):
     wait = max(wait, 0.0)
     eventlet.sleep(wait)
 
+def emit(sid, event_name, message):
+  sio.emit(event_name, message, room=sid)
+
 def broadcast(event_name, message):
   sio.emit(event_name, message, room='all')
 
