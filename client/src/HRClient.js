@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import { Button, Container, Grid, Icon, Loader, Statistic, Transition } from 'semantic-ui-react';
 import io from 'socket.io-client';
 import PageVisibility from 'react-page-visibility';
+import BridgeSim from './BridgeSim';
 import HeartRate from './HeartRate';
 import StreamingChart from './StreamingChart';
 import { toRGBString } from './util';
@@ -97,9 +98,11 @@ class HRClient extends Component {
     var newBridge = [];
     for (var i = 0; i < newColors.length; i++) {
       newBridge.push({
-        r: newColors[i] === null ? 0 : newColors[i][0],
-        g: newColors[i] === null ? 0 : newColors[i][1],
-        b: newColors[i] === null ? 0 : newColors[i][2],
+        color: {
+          r: newColors[i] === null ? 0 : newColors[i][0],
+          g: newColors[i] === null ? 0 : newColors[i][1],
+          b: newColors[i] === null ? 0 : newColors[i][2],
+        },
         lastBeat: this.state.bridge.length === newColors.length ? this.state.bridge[i].lastBeat : 0,
         present: newColors[i] !== null
       });
@@ -111,9 +114,11 @@ class HRClient extends Component {
     var newBridge = [];
     for (var i = 0; i < this.state.bridge.length; i++) {
       newBridge.push({
-        r: this.state.bridge[i].r,
-        g: this.state.bridge[i].g,
-        b: this.state.bridge[i].b,
+        color: {
+          r: this.state.bridge[i].color.r,
+          g: this.state.bridge[i].color.g,
+          b: this.state.bridge[i].color.b,
+        },
         lastBeat: i === beatIdx ? Date.now() : this.state.bridge[i].lastBeat,
         present: this.state.bridge[i].present
       });
@@ -126,6 +131,12 @@ class HRClient extends Component {
       <div>
         <Container>
           <Grid centered columns={1}>
+            <Grid.Row>
+              <Grid.Column>
+                <BridgeSim bridge={this.state.bridge} />
+              </Grid.Column>
+            </Grid.Row>
+
             <Grid.Row>
               <Grid.Column>
                 <StreamingChart ref={this.chart} active={this.state.active} />
