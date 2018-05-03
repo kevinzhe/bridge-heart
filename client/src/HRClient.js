@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import { Button, Container, Grid, Icon, Loader, Statistic, Transition } from 'semantic-ui-react';
 import io from 'socket.io-client';
+import PageVisibility from 'react-page-visibility';
 import HeartRate from './HeartRate';
 import StreamingChart from './StreamingChart';
 import './HRClient.css';
@@ -70,6 +71,12 @@ class HRClient extends Component {
   tearDownSocket = () => {
     this.socket.disconnect();
     delete this.socket;
+  }
+
+  onPageVisibility = visible => {
+    if (!visible) {
+      this.setState({ active: false });
+    }
   }
 
   onBeat = (time) => {
@@ -166,6 +173,8 @@ class HRClient extends Component {
 
           </Grid>
         </Container>
+
+        <PageVisibility onChange={this.onPageVisibility} />
 
         { this.state.active &&
         <HeartRate
