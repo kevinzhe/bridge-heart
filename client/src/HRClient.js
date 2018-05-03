@@ -6,7 +6,6 @@ import BridgeSim from './BridgeSim';
 import HeartRate from './HeartRate';
 import StreamingChart from './StreamingChart';
 import { toRGBString } from './util';
-import './HRClient.css';
 
 class HRClient extends Component {
 
