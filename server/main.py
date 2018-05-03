@@ -137,6 +137,7 @@ def draw_state(state, bridge):
 
 def get_args():
   parser = ArgumentParser(description='Run the bridge heart monitor server', formatter_class=ArgumentDefaultsHelpFormatter)
+  parser.add_argument('--simulator', action='store_true', dest='simulate', help='Run the bridge simulator')
   parser.add_argument('--no-pausch', action='store_false', dest='pausch', help='Don\'t run on the Pausch bridge')
   parser.add_argument('--host', action='store', type=str, default='api.bridge.kevinzheng.com', dest='listen_host', help='Host to listen on')
   parser.add_argument('--port', action='store', type=int, default=43414, dest='listen_port', help='Port to listen on')

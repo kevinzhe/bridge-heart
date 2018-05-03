@@ -62,17 +62,76 @@ class SimulatedBridge(Bridge):
   '''A simulated bridge, useful for testing.'''
 
   def __init__(self):
-    self.top = (0, 0, 0)
-    self.bottom = (0, 0, 0)
+    import Tkinter
+    self.width = 1000
+    self.height = 100
+    self.root = Tkinter.Tk()
+    self.canvas = Tkinter.Canvas(
+      self.root, width=self.width, height=self.height)
+    self.canvas.pack()
+    self.canvas.configure(background='white')
+
+    self.top = [(0, 0, 0, 0) for _ in xrange(Bridge.START_SEQ, Bridge.END_SEQ+1)]
+    self.bottom = [(0, 0, 0, 0) for _ in xrange(Bridge.START_SEQ, Bridge.END_SEQ+1)]
+
+    self.render_count = 0
 
   def set_top(self, r, g, b, w, panels=None):
-    self.top = (r, g, b)
+    for i in panels:
+      self.top[i] = (r, g, b, w)
 
   def set_bottom(self, r, g, b, w, panels=None):
-    self.bottom = (r, g, b)
+    for i in panels:
+      self.bottom[i] = (r, g, b, w)
 
   def render(self):
-    pass
+    self.render_count += 1
+    if self.render_count % 2 != 0:
+      return
+
+    import Tkinter
+    self.canvas.delete(Tkinter.ALL)
+
+    w = float(self.width) / len(self.top)
+    h = float(self.height) / 2.0
+
+    for i, (top, bottom) in enumerate(zip(self.top, self.bottom)):
+      tc, tw = top[:3], top[3]
+      bc, bw = bottom[:3], bottom[3]
+
+      tc = self.get_weighted_rgb(tc, tw)
+      bc = self.get_weighted_rgb(bc, bw)
+
+      tc = self.to8bit(*tc)
+      bc = self.to8bit(*bc)
+
+      x0 = i * w
+      x1 = x0 + w
+
+      self.canvas.create_rectangle(x0, 0, x1, self.height/2,
+        fill=self.get_rgb_string(*tc))
+      self.canvas.create_rectangle(x0, self.height/2, x1, self.height,
+        fill=self.get_rgb_string(*bc))
+
+    self.root.update()
+
+  @staticmethod
+  def to8bit(r, g, b):
+    r = min(max(int(round(r * 255)), 0), 255)
+    g = min(max(int(round(g * 255)), 0), 255)
+    b = min(max(int(round(b * 255)), 0), 255)
+    return r, g, b
+
+  @staticmethod
+  def get_weighted_rgb(rgb, w):
+    import colorsys
+    h, s, v = colorsys.rgb_to_hsv(*rgb)
+    v *= w
+    return colorsys.hsv_to_rgb(h, s, v)
+
+  @staticmethod
+  def get_rgb_string(r, g, b):
+    return '#%0.2X%0.2X%0.2X' % (r, g, b)
 
 
 class CombinedBridge(Bridge):
