@@ -22,8 +22,6 @@ COLORS = (
 (119.0/255.0, 104.0/255.0, 174.0/255.0),
 )
 
-BLACK = (0.0, 0.0, 0.0)
-
 
 ################################################################################
 # State representation
@@ -146,7 +144,7 @@ def on_timer(state):
   state.now = time.time()
 
 def broadcast_state(state):
-  data = [client.color if client is not None else BLACK for client in state.clients]
+  data = [client.color if client is not None else None for client in state.clients]
   eventloop.broadcast('colors', data)
 
 def broadcast_beat(state, beat_cid):
