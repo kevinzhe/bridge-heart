@@ -65,20 +65,29 @@ class State(object):
   def num_free(self):
     return self.num_free_panels
 
-  def place_next(self, client):
-    if self.num_free_panels % 2 == 0:
-      for i in range(len(self.clients)):
-        if self.clients[i] is None:
-          self.clients[i] = client
-          self.num_free_panels-=1
-          return True
+  def place_next(self, new_client):
+    if self.num_free_panels == 0:
+      return False
+
+    left_idx = 0
+    for i, client in enumerate(self.clients):
+      if client is None:
+        left_idx = i
+        break
+
+    right_idx = 0
+    for i, client in enumerate(reversed(self.clients)):
+      if client is None:
+        right_idx = len(self.clients) - i - 1
+        break
+
+    if left_idx < len(self.clients) - right_idx - 1:
+      self.clients[left_idx] = new_client
     else:
-      for i in range(len(self.clients)):
-        if self.clients[len(self.clients)-i-1] is None:
-          self.clients[len(self.clients)-i-1] = client
-          self.num_free_panels-=1
-          return True
-    return False
+      self.clients[right_idx] = new_client
+
+    self.num_free_panels -= 1
+    return True
 
   def remove_client(self, client):
     ''' Assumes that the client must be in our self.clients list '''
@@ -90,12 +99,12 @@ class State(object):
     if seen is None:
       return False
     else:
-      if seen <= len(self.clients) / 2:
-        for i in range(seen+1, 1+len(self.clients)//2):
+      if seen < len(self.clients) / 2:
+        for i in range(seen+1, len(self.clients)//2+1):
           self.clients[i-1] = self.clients[i]
           self.clients[i] = None
       else:
-        for i in range(seen-1, len(self.clients)//2, -1):
+        for i in range(seen-1, len(self.clients)//2-1, -1):
           self.clients[i+1] = self.clients[i]
           self.clients[i] = None
     self.num_free_panels+=1
@@ -156,13 +165,13 @@ def draw_state(state, bridge):
       color = (0, 0, 0)
       w = 0.0
     else:
-      diff = (state.now - client.last_beat) / 4.0
+      diff = (state.now - client.last_beat) / 2.0
       diff = min(diff, 0.4)
       diff = 1.0 - diff
       color = client.color
       w = diff
     if state.num_free() == 0:
-      w = 1.0 - min(state.now % 1.0, 0.4)
+      w = 1.0 - min((state.now % 1.0)/2.0, 0.4)
     panels = range(client_idx*WIDTH, client_idx*WIDTH+WIDTH)
     bridge.set_top(*color, w=w, panels=panels)
     bridge.set_bottom(*color, w=w, panels=panels)
