@@ -31,7 +31,8 @@ class HRClient extends Component {
       camera: {
         torch: false,
         back: true
-      }
+      },
+      bridge: [ ]
     };
   }
 
@@ -64,8 +65,8 @@ class HRClient extends Component {
     this.socket = io(HRClient.SERVER);
     this.socket.on('connect', () => { this.setState({connected: true}); });
     this.socket.on('disconnect', () => { this.setState({connected: false}); });
-    this.socket.on('colors', (br) => { console.log(br); });
-    this.socket.on('beat', (br) => { console.log(br); });
+    this.socket.on('colors', this.onNetworkColor);
+    this.socket.on('beat', this.onNetworkBeat);
   }
 
   tearDownSocket = () => {
@@ -89,6 +90,34 @@ class HRClient extends Component {
   onData = (measurement) => {
     this.signal0.append(measurement.time, measurement.value);
     this.setState({ measurement: measurement });
+  }
+
+  onNetworkColor = (newColors) => {
+    var newBridge = [];
+    for (var i = 0; i < newColors.length; i++) {
+      newBridge.push({
+        r: newColors[i] === null ? 0 : newColors[i][0],
+        g: newColors[i] === null ? 0 : newColors[i][1],
+        b: newColors[i] === null ? 0 : newColors[i][2],
+        lastBeat: this.state.bridge.length === newColors.length ? this.state.bridge[i].lastBeat : 0,
+        present: newColors[i] !== null
+      });
+    }
+    this.setState({ bridge: newBridge });
+  }
+
+  onNetworkBeat = (beatIdx) => {
+    var newBridge = [];
+    for (var i = 0; i < this.state.bridge.length; i++) {
+      newBridge.push({
+        r: this.state.bridge[i].r,
+        g: this.state.bridge[i].g,
+        b: this.state.bridge[i].b,
+        lastBeat: i === beatIdx ? Date.now() : this.state.bridge[i].lastBeat,
+        present: this.state.bridge[i].present
+      });
+    }
+    this.setState({ bridge: newBridge });
   }
 
   getCurRGB = () => {
