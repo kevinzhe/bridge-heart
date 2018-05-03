@@ -28,11 +28,7 @@ class BridgeSim extends Component {
         </Grid>
       );
     } else {
-      return (
-        <Grid.Row columns={1}>
-          <Tile />
-        </Grid.Row>
-      );
+      return null;
     }
   }
 
