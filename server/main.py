@@ -4,7 +4,6 @@ from argparse import ArgumentParser
 from argparse import ArgumentDefaultsHelpFormatter
 
 import eventloop
-import events
 
 from bridge import Bridge
 from bridge import CombinedBridge
@@ -22,6 +21,11 @@ COLORS = (
 ( 59.0/255.0, 178.0/255.0, 115.0/255.0),
 (119.0/255.0, 104.0/255.0, 174.0/255.0),
 )
+
+
+################################################################################
+# State representation
+################################################################################
 
 class Client(object):
 
@@ -90,32 +94,41 @@ class State(object):
     return True
 
 
-def on_connected(state, event):
+################################################################################
+# Event handlers
+################################################################################
+
+def on_connected(state, cid):
   '''Handle a client connecting.'''
-  print('connected', event.cid)
-  cl = Client(event.cid)
+  print('connected', cid)
+  cl = Client(cid)
   if state.num_free() > 0:
     state.place_next(cl)
-    print 'connect', state.num_free()
+    print('connect', state.num_free())
 
-def on_disconnected(state, event):
+def on_disconnected(state, cid):
   '''Handle a client disconnecting.'''
-  print('disconnected', event.cid)
-  client = state.get_cid(event.cid)
+  print('disconnected', cid)
+  client = state.get_cid(cid)
   if client is not None:
     state.remove_client(client)
-    print 'disconnect', state.num_free()
+    print('disconnect', state.num_free())
 
-def on_heartbeat(state, event):
+def on_heartbeat(state, cid):
   '''Handle a HeartBeat event.'''
-  client = state.get_cid(event.cid)
+  client = state.get_cid(cid)
   if client:
     client.last_beat = time.time()
 
-def on_timer(state, event):
+def on_timer(state):
   '''Handle a TimerTick event.'''
   state.now_last = state.now
   state.now = time.time()
+
+
+################################################################################
+# State visualization
+################################################################################
 
 def draw_state(state, bridge):
   '''Translate the supplied state object into a lighting show on the bridge.'''
@@ -124,7 +137,7 @@ def draw_state(state, bridge):
       color = (0, 0, 0)
       w = 0.0
     else:
-      diff = state.now - client.last_beat
+      diff = (state.now - client.last_beat) / 4.0
       diff = min(diff, 0.4)
       diff = 1.0 - diff
       color = client.color
@@ -154,24 +167,24 @@ def main():
 
   # initialize the bridges
   bridges = []
-  bridges.append(SimulatedBridge())
+  if args.simulate: bridges.append(SimulatedBridge())
   if args.pausch: bridges.append(PauschBridge())
   bridge = CombinedBridge(bridges)
 
-  # register all of the handlers
-  eventloop.register_handler(events.TimerTick, on_timer)
-  eventloop.register_handler(events.HeartBeat, on_heartbeat)
-  eventloop.register_handler(events.Connected, on_connected)
-  eventloop.register_handler(events.Disconnected, on_disconnected)
-  eventloop.register_draw(draw_state)
-
   # spin up the event loop
   eventloop.start(bridge, state,
-    listen_host=args.listen_host,
-    listen_port=args.listen_port,
-    listen_https=args.listen_https,
-    listen_privkey=args.listen_privkey,
-    listen_pubkey=args.listen_pubkey)
+    listen_host    = args.listen_host,
+    listen_port    = args.listen_port,
+    listen_https   = args.listen_https,
+    listen_privkey = args.listen_privkey,
+    listen_pubkey  = args.listen_pubkey,
+    draw_fn        = draw_state,
+    timer_fn       = on_timer,
+    handlers       = {
+      'beat'      : on_heartbeat,
+      'connect'   : on_connected,
+      'disconnect': on_disconnected,
+    })
 
 if __name__ == '__main__':
   main()

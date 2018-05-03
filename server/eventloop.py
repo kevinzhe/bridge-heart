@@ -1,67 +1,62 @@
-import traceback
-from threading import Thread, Event
-from multiprocessing import Process, Queue
+import socketio
+import eventlet
+import time
 
-import events
-from server import run_server
+sio = socketio.Server()
 
-UPDATE_HZ = 30
+_UPDATE_HZ = 30
 
-_handlers = dict()
-_draw_state = None
-_started = False
 
-def main_loop(evq, state, bridge):
-  if _draw_state is None:
-    raise RuntimeError('draw_state function was not registered (call register_draw())')
-  _started = True
+def render_forever(state, bridge, draw_fn, timer_fn):
+  '''Redraw the bridge periodically'''
   while True:
-    event = evq.get()
-    for eventType in _handlers:
-      if eventType == type(event):
-        _handlers[eventType](state, event)
-      assert _draw_state is not None
-      _draw_state(state, bridge)
+    start = time.time()
+
+    timer_fn(state)
+    draw_fn(state, bridge)
     bridge.render()
 
-def timer(evq, stop):
-  '''Thread target that generates periodic timer ticks into the event queue'''
-  while not stop.wait(1.0/UPDATE_HZ):
-    evq.put(events.TimerTick())
+    end = time.time()
+    wait = (1.0/_UPDATE_HZ) - (end-start)
+    wait = max(wait, 0.0)
+    eventlet.sleep(wait)
 
-def register_handler(event_type, handler):
-  if _started: raise RuntimeError('Event loop already started')
-  _handlers[event_type] = handler
+def start(
+    bridge,
+    state,
+    listen_host='',
+    listen_port=8000,
+    listen_https=False,
+    listen_privkey='',
+    listen_pubkey='',
+    handlers=None,
+    timer_fn=None,
+    draw_fn=None,
+    ):
+  '''Spin up the event loop'''
+  assert handlers is not None
+  assert draw_fn is not None
+  assert timer_fn is not None
 
-def register_draw(draw_state_fn):
-  if _started: raise RuntimeError('Event loop already started')
-  global _draw_state
-  _draw_state = draw_state_fn
+  # register the handlers
+  for event, handler in handlers.iteritems():
+    if event == 'connect':
+      sio.on(event, lambda sid, environ, event=event, state=state: handlers[event](state, sid))
+    elif event == 'disconnect':
+      sio.on(event, lambda sid, event=event, state=state: handlers[event](state, sid))
+    else:
+      sio.on(event, lambda sid, data, event=event, state=state: handlers[event](state, sid))
 
-def start(bridge, state, listen_host='', listen_port=8000,
-    listen_https=False, listen_privkey='', listen_pubkey=''):
-  # initialize the event queue
-  evq = Queue()
+  # initialize the server
+  app = socketio.Middleware(sio)
+  server = eventlet.listen((listen_host, listen_port))
+  if listen_https:
+    server = eventlet.wrap_ssl(
+      server,
+      certfile=listen_pubkey,
+      keyfile=listen_privkey,
+      server_side=True)
 
-  # signal the producer threads to stop
-  stop_event = Event()
-
-  # start the timer
-  timer_thread = Thread(target=timer, args=(evq, stop_event,))
-  timer_thread.start()
-
-  # start the socket server
-  web_process = Process(target=run_server,
-    args=(evq, listen_host, listen_port,
-      listen_https, listen_privkey, listen_pubkey))
-  web_process.start()
-
-  # run indefinitely
-  try:
-    main_loop(evq, state, bridge)
-  except (Exception, KeyboardInterrupt) as e:
-    traceback.print_exc()
-    stop_event.set()
-    timer_thread.join()
-    web_process.join()
-    print('event loop interrupted, exiting')
+  # spin up the main event loop
+  eventlet.spawn(render_forever, state, bridge, draw_fn, timer_fn)
+  eventlet.wsgi.server(server, app, log_output=False)
