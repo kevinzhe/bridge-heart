@@ -40,21 +40,36 @@ class HRClient extends Component {
       strokeStyle: 'rgba(0, 0, 0, 1)',
       lineWidth: 2,
     });
-    this.setUpSocket();
+    if (this.state.active) {
+      this.setUpSocket();
+    }
   }
 
   componentWillUnmount() {
-    this.tearDownSocket();
+    if (this.socket) {
+      this.tearDownSocket();
+    }
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (prevState.active && !this.state.active) {
+      this.tearDownSocket();
+    } else if (!prevState.active && this.state.active) {
+      this.setUpSocket();
+    }
   }
 
   setUpSocket = () => {
     this.socket = io(HRClient.SERVER);
     this.socket.on('connect', () => { this.setState({connected: true}); });
     this.socket.on('disconnect', () => { this.setState({connected: false}); });
+    this.socket.on('colors', (br) => { console.log(br); });
+    this.socket.on('beat', (br) => { console.log(br); });
   }
 
   tearDownSocket = () => {
     this.socket.disconnect();
+    delete this.socket;
   }
 
   onBeat = (time) => {
@@ -139,7 +154,7 @@ class HRClient extends Component {
               </Grid.Column>
             </Grid.Row>
 
-            <Transition visible={!this.state.connected} animation='scale' duration={500}>
+            <Transition visible={this.state.active && !this.state.connected} animation='scale' duration={500}>
               <Grid.Row>
                 <Grid.Column textAlign='center'>
                   <Loader active={true} inline>
