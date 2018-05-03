@@ -4,6 +4,7 @@ import io from 'socket.io-client';
 import PageVisibility from 'react-page-visibility';
 import HeartRate from './HeartRate';
 import StreamingChart from './StreamingChart';
+import { toRGBString } from './util';
 import './HRClient.css';
 
 class HRClient extends Component {
@@ -120,13 +121,6 @@ class HRClient extends Component {
     this.setState({ bridge: newBridge });
   }
 
-  getCurRGB = () => {
-    const r = Math.min(255, Math.round(this.state.measurement.rgb.r));
-    const g = Math.min(255, Math.round(this.state.measurement.rgb.g));
-    const b = Math.min(255, Math.round(this.state.measurement.rgb.b));
-    return 'rgb('+r+','+g+','+b+')';
-  }
-
   render() {
     return (
       <div>
@@ -155,7 +149,7 @@ class HRClient extends Component {
               <Grid.Column textAlign='center'>
                 <Transition animation='pulse' duration={250} visible={this.state.beatCount % 2 === 0}>
                   <Icon.Group size='massive'>
-                    <Icon name='heart' style={{color: this.getCurRGB()}} />
+                    <Icon name='heart' style={{color: toRGBString(this.state.measurement.rgb)}} />
                   </Icon.Group>
                 </Transition>
               </Grid.Column>
