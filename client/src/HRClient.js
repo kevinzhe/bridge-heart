@@ -34,7 +34,8 @@ class HRClient extends Component {
         torch: false,
         back: true
       },
-      bridge: [ ]
+      bridge: [ ],
+      selfIdx: -1
     };
   }
 
@@ -69,6 +70,7 @@ class HRClient extends Component {
     this.socket.on('disconnect', () => { this.setState({connected: false}); });
     this.socket.on('colors', this.onNetworkColor);
     this.socket.on('beat', this.onNetworkBeat);
+    this.socket.on('self_index', this.onSelfIndex);
   }
 
   tearDownSocket = () => {
@@ -126,6 +128,10 @@ class HRClient extends Component {
     this.setState({ bridge: newBridge });
   }
 
+  onSelfIndex = (idx) => {
+    this.setState({ selfIdx: idx });
+  }
+
   render() {
     return (
       <div>
@@ -133,7 +139,7 @@ class HRClient extends Component {
           <Grid centered columns={1}>
             <Grid.Row>
               <Grid.Column>
-                <BridgeSim bridge={this.state.bridge} />
+                <BridgeSim bridge={this.state.bridge} selfIdx={this.state.selfIdx} />
               </Grid.Column>
             </Grid.Row>
 

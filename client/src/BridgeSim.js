@@ -5,13 +5,20 @@ import { toRGBString } from './util';
 class BridgeSim extends Component {
 
   static defaultProps = {
-    bridge: [ ]
+    bridge: [ ],
+    selfIdx: -1
   };
 
   render() {
     const tiles = this.props.bridge.map((client, i) => (
-      <Tile color={client.color} present={client.present} key={i} />
+      <Tile
+        key={i}
+        present={client.present}
+        marked={i === this.props.selfIdx}
+        color={client.color}
+      />
     ));
+
     if (this.props.bridge.length > 0) {
       return (
         <Grid divided>
@@ -49,12 +56,12 @@ class Tile extends Component {
         verticalAlign='middle'
         textAlign='center'
         style={{
-          backgroundColor: this.props.present ? toRGBString(this.props.color, true) : 'rgb(230,230,230)',
-          paddingTop: '25px',
-          paddingBottom: '25px'
+          backgroundColor: this.props.present ? toRGBString(this.props.color, true) : 'rgb(240,240,240)',
+          paddingTop: '10px',
+          paddingBottom: '10px'
         }}
       >
-        {this.props.marked ? <h1 style={{color:'white'}}>★</h1> : ''}
+        <h1 style={{color:'white'}}>{this.props.marked ? '★' : '\u00A0'}</h1>
       </Grid.Column>
     );
   }
