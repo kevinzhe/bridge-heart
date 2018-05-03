@@ -21,6 +21,9 @@ def render_forever(state, bridge, draw_fn, timer_fn):
     wait = max(wait, 0.0)
     eventlet.sleep(wait)
 
+def broadcast(event_name, message):
+  sio.emit(event_name, message, room='all')
+
 def start(
     bridge,
     state,
@@ -41,11 +44,21 @@ def start(
   # register the handlers
   for event, handler in handlers.iteritems():
     if event == 'connect':
-      sio.on(event, lambda sid, environ, event=event, state=state: handlers[event](state, sid))
+      def handle_connect(sid, environ, event=event):
+        sio.enter_room(sid, 'all')
+        handlers[event](state, sid)
+      sio.on(event, handle_connect)
+
     elif event == 'disconnect':
-      sio.on(event, lambda sid, event=event, state=state: handlers[event](state, sid))
+      def handle_disconnect(sid, event=event):
+        sio.leave_room(sid, 'all')
+        handlers[event](state, sid)
+      sio.on(event, handle_disconnect)
+
     else:
-      sio.on(event, lambda sid, data, event=event, state=state: handlers[event](state, sid))
+      def handle_message(sid, data, event=event):
+        handlers[event](state, sid)
+      sio.on(event, handle_message)
 
   # initialize the server
   app = socketio.Middleware(sio)

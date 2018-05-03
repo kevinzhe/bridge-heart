@@ -22,6 +22,8 @@ COLORS = (
 (119.0/255.0, 104.0/255.0, 174.0/255.0),
 )
 
+BLACK = (0.0, 0.0, 0.0)
+
 
 ################################################################################
 # State representation
@@ -49,10 +51,16 @@ class State(object):
     self.num_free_panels = (Bridge.END_SEQ-Bridge.START_SEQ)/WIDTH
 
   def get_cid(self, cid):
-    for client in self.clients:
+    idx = self.get_cid_index(cid)
+    if idx == -1:
+      return False
+    return self.clients[idx]
+
+  def get_cid_index(self, cid):
+    for i, client in enumerate(self.clients):
       if client is not None and client.cid == cid:
-        return client
-    return False
+        return i
+    return -1
 
   def num_free(self):
     return self.num_free_panels
@@ -104,6 +112,7 @@ def on_connected(state, cid):
   cl = Client(cid)
   if state.num_free() > 0:
     state.place_next(cl)
+    broadcast_state(state)
     print('connect', state.num_free())
 
 def on_disconnected(state, cid):
@@ -112,6 +121,7 @@ def on_disconnected(state, cid):
   client = state.get_cid(cid)
   if client is not None:
     state.remove_client(client)
+    broadcast_state(state)
     print('disconnect', state.num_free())
 
 def on_heartbeat(state, cid):
@@ -119,12 +129,21 @@ def on_heartbeat(state, cid):
   client = state.get_cid(cid)
   if client:
     client.last_beat = time.time()
+    broadcast_beat(state, cid)
 
 def on_timer(state):
   '''Handle a TimerTick event.'''
   state.now_last = state.now
   state.now = time.time()
 
+def broadcast_state(state):
+  data = [client.color if client is not None else BLACK for client in state.clients]
+  eventloop.broadcast('colors', data)
+
+def broadcast_beat(state, beat_cid):
+  idx = state.get_cid_index(beat_cid)
+  if idx != -1:
+    eventloop.broadcast('beat', idx)
 
 ################################################################################
 # State visualization
